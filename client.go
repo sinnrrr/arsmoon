@@ -7,18 +7,25 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const (
+	Subscribe = "subscribe"
+	Unsubscribe = "unsubscribe"
+)
+
+var instrumentMessages chan InstrumentMessage
+
 type SubscriptionRequestInfo struct {
-	Op string `json:"op" validate:"oneof=subscribe unsubscribe"`
+	Op   string `json:"op" validate:"oneof=subscribe unsubscribe"`
 	Args string `json:"args" validate:"eq=instrument"`
 }
 
 type SubscriptionStatus struct {
-	Success   bool   `json:"success" validate:"required"`
-	Subscribe string `json:"subscribe" validate:"eq=instrument"`
-	Request SubscriptionRequestInfo `json:"request" validate:"required,dive,required"`
+	Success   bool                    `json:"success" validate:"required"`
+	Subscribe string                  `json:"subscribe" validate:"eq=instrument"`
+	Request   SubscriptionRequestInfo `json:"request" validate:"required,dive,required"`
 }
 
-type InstrumentResponse struct {
+type InstrumentMessage struct {
 	Timestamp uint16  `json:"timestamp"`
 	Symbol    string  `json:"symbol"`
 	Price     float32 `json:"price"`
@@ -27,20 +34,34 @@ type InstrumentResponse struct {
 type Bitmex struct {
 	URL        *url.URL
 	Connection *websocket.Conn
-	Channel    chan InstrumentResponse
+	Channel    chan InstrumentMessage
 }
 
 func NewBitmex() *Bitmex {
 	return &Bitmex{
 		URL: &url.URL{
-			Scheme:   "wss",
-			Host:     "www.bitmex.com",
-			Path:     "realtime",
-			RawQuery: "subscribe=instrument",
+			Scheme: "wss",
+			Host:   "www.bitmex.com",
+			Path:   "realtime",
 		},
 	}
 }
 
+func NewSubscriptionRequestInfo(
+	subscribe bool,
+) *SubscriptionRequestInfo {
+	var op string;
+
+	if (subscribe) { op = Subscribe 
+	} else { op = Unsubscribe}
+
+	return &SubscriptionRequestInfo{
+		Op:   op,
+		Args: "instrument",
+	}
+}
+
+// Establish connection to Bitmex websocket server
 func (bitmex *Bitmex) Connect() {
 	conn, _, err := websocket.DefaultDialer.Dial(bitmex.URL.String(), nil)
 	if err != nil {
@@ -51,33 +72,23 @@ func (bitmex *Bitmex) Connect() {
 }
 
 func (bitmex *Bitmex) Subscribe() {
-	// var messages chan InstrumentResponse
+	err := bitmex.Connection.WriteJSON(NewSubscriptionRequestInfo(true))
+	if err != nil {
+		log.Fatal("Error writing subscription message: ", err)
+	}
 
-	go func() {
-		i := 0;
-		for {
-			i++;
+	if err := readMessages(bitmex.Connection, 2); err != nil {
+		log.Fatal(err)
+	}
+}
 
-			_, msg, err := bitmex.Connection.ReadMessage()
-			if err != nil {
-				log.Fatal("Failed reading message from remote server: ", err)
-			}
+func (bitmex *Bitmex) Unsubscribe() {
+	err := bitmex.Connection.WriteJSON(NewSubscriptionRequestInfo(false))
+	if err != nil {
+		log.Fatal("Error writing subscription message: ", err)
+	}
 
-			// First two messages are
-			// just welcome ones (omiting push to the channel)
-			if (i == 2) {
-				// Second message resproduces the subscription status
-				var subscriptionStatus SubscriptionStatus;
-				if err := parseJsonAndValidate(msg, &subscriptionStatus); err != nil {
-					log.Fatal("Error validating request: ", err)
-				}
-
-				if !subscriptionStatus.Success {
-					log.Fatal("Error while subscribing to Bitmex: ", )
-				}
-			} else if (i > 2) {
-				// todo
-			}
-		}
-	}()
+	if err := readMessages(bitmex.Connection, 0); err != nil {
+		log.Fatal(err)
+	}
 }

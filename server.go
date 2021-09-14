@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -31,13 +32,14 @@ func handler(c *gin.Context) {
 			log.Fatal("Error parsing JSON: ", err)
 		}
 
-		bitmex := NewBitmex()
-		
+		// Connecting in handler not to waste connection resources
 		bitmex.Connect()
-		bitmex.Subscribe()
 
-		conn.WriteJSON(InstrumentResponse{
+		switch body.Action {
+			case Subscribe: bitmex.Subscribe()
+			case Unsubscribe: bitmex.Unsubscribe()
+		}
 
-		})
+		fmt.Printf("%+v\n", <-instrumentMessages)
 	}
 }
