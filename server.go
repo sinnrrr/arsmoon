@@ -1,13 +1,13 @@
 package main
 
 import (
-	// "fmt"
 	"log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
+// The request body representation.
 type Body struct {
 	Action  string   `json:"action" validate:"required,oneof=subscribe unsubscribe"`
 	Symbols []string `json:"symbols"`
@@ -15,12 +15,14 @@ type Body struct {
 
 var upgrader = websocket.Upgrader{}
 
+// Websocket handler.
 func handler(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Fatal("Error upgrading connection: ", err)
 	}
 
+	// Infinite loop of reading messages and parsing them.
 	for {
 		_, msg, err := conn.ReadMessage()
 		if (err != nil) {
@@ -32,7 +34,7 @@ func handler(c *gin.Context) {
 			log.Fatal("Error parsing JSON: ", err)
 		}
 
-		// Connecting in handler not to waste connection resources
+		// Connecting in handler not to waste connection resources.
 		bitmex.Connect()
 
 		switch body.Action {
