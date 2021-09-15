@@ -1,8 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
+	"log"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/websocket"
@@ -21,17 +22,20 @@ func parseJsonAndValidate(data []byte, s interface{}) error {
 	return nil
 }
 
-func readMessages(conn *websocket.Conn, statusMessageId uint) error {
+func readMessages(
+	conn *websocket.Conn,
+	statusMessageId uint,
+) error {
 	var i uint = 0
 	for {
 		i++
 
-		_, msg, err := bitmex.Connection.ReadMessage()
+		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			return fmt.Errorf("failed reading message from remote server: %s", err)
 		}
 
-		if (statusMessageId > 0) {
+		if statusMessageId > 0 {
 			if i == statusMessageId {
 				// Second message resproduces the subscription status
 				var subscriptionStatus SubscriptionStatus
@@ -43,14 +47,20 @@ func readMessages(conn *websocket.Conn, statusMessageId uint) error {
 				if !subscriptionStatus.Success {
 					return fmt.Errorf("error while subscribing to Bitmex")
 				}
+
+				statusMessageId = 0
 			}
 		} else {
-			var instrumentMessage InstrumentMessage
-			if err := parseJsonAndValidate(msg, &instrumentMessage); err != nil {
-				return fmt.Errorf("error validating instrument message: %s", err)
-			}
+			log.Printf(string(msg))
+			panic("asd")
+			// var instrumentResponse InstrumentResponse
+			// if err := parseJsonAndValidate(msg, &instrumentResponse); err != nil {
+			// 	return fmt.Errorf("error validating instrument message: %s", err)
+			// }
 
-			instrumentMessages <- instrumentMessage
+			// if err = conn.WriteJSON(instrumentResponse); err != nil {
+			// 	log.Fatal(err)
+			// }
 		}
 	}
 }

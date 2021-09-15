@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	// "fmt"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -39,7 +39,5 @@ func handler(c *gin.Context) {
 			case Subscribe: bitmex.Subscribe()
 			case Unsubscribe: bitmex.Unsubscribe()
 		}
-
-		fmt.Printf("%+v\n", <-instrumentMessages)
 	}
 }

@@ -8,11 +8,10 @@ import (
 )
 
 const (
-	Subscribe = "subscribe"
+	Subscribe   = "subscribe"
 	Unsubscribe = "unsubscribe"
+	Instrument  = "instrument"
 )
-
-var instrumentMessages chan InstrumentMessage
 
 type SubscriptionRequestInfo struct {
 	Op   string `json:"op" validate:"oneof=subscribe unsubscribe"`
@@ -29,6 +28,24 @@ type InstrumentMessage struct {
 	Timestamp uint16  `json:"timestamp"`
 	Symbol    string  `json:"symbol"`
 	Price     float32 `json:"price"`
+}
+
+type InstrumentInfo struct {
+	Symbol             string  `json:"symbol"`
+	LastPriceProtected float32 `json:"lastPriceProtected"`
+	BidPrice           float32 `json:"bidPrice"`
+	MidPrice           float32 `json:"midPrice"`
+	AskPrice           float32 `json:"askPrice"`
+	ImpactBidPrice     float32 `json:"impactBidPrice"`
+	ImpactMidPrice     float32 `json:"impactMidPrice"`
+	ImpactAskPrice     float32 `json:"impactAskPrice"`
+	Timestamp          string  `json:"timestamp"`
+}
+
+type InstrumentResponse struct {
+	Table  string           `json:"table" validate:"eq=instrument"`
+	Action string           `json:"action" validate:"eq=update"`
+	Data   []InstrumentInfo `json:"data" validate:"required,dive,required"`
 }
 
 type Bitmex struct {
@@ -50,14 +67,17 @@ func NewBitmex() *Bitmex {
 func NewSubscriptionRequestInfo(
 	subscribe bool,
 ) *SubscriptionRequestInfo {
-	var op string;
+	var op string
 
-	if (subscribe) { op = Subscribe 
-	} else { op = Unsubscribe}
+	if subscribe {
+		op = Subscribe
+	} else {
+		op = Unsubscribe
+	}
 
 	return &SubscriptionRequestInfo{
 		Op:   op,
-		Args: "instrument",
+		Args: Instrument,
 	}
 }
 
