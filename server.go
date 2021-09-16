@@ -22,20 +22,23 @@ type Body struct {
 	}
 
 	// Infinite loop of reading messages and parsing them.
-	for {
-		_, msg, err := clientConnection.ReadMessage()
-		if err != nil {
-			log.Fatal("Error reading message: ", err)
+	// Using goroutine not to block the connection flow.
+	go func() {
+		for {
+			_, msg, err := clientConnection.ReadMessage()
+			if err != nil {
+				log.Fatal("Error reading message: ", err)
+			}
+	
+			var body Body
+			if err := parseJsonAndValidate(msg, &body); err != nil {
+				log.Fatal("Error parsing JSON: ", err)
+			}
+	
+			switch body.Action {
+				case Subscribe: bitmex.Subscribe(clientConnection)
+				case Unsubscribe: bitmex.Unsubscribe(clientConnection)
+			}
 		}
-
-		var body Body
-		if err := parseJsonAndValidate(msg, &body); err != nil {
-			log.Fatal("Error parsing JSON: ", err)
-		}
-
-		switch body.Action {
-			case Subscribe: bitmex.Subscribe(clientConnection)
-			case Unsubscribe: bitmex.Unsubscribe(clientConnection)
-		}
-	}
+	}()
 }

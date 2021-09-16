@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"log"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"log"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/websocket"
@@ -25,9 +25,12 @@ func parseJsonAndValidate(data []byte, s interface{}) error {
 	return nil
 }
 
-
+// A method, which handles the subsctiption part of the service.
+// It makes subsctiption request, validates the result of it and outputs the results.
 func subscriptionHandler(
+	// Bitmex connection.
 	clientConnection *websocket.Conn,
+	// Server connection (gorilla webscoket).
 	serverConnection *websocket.Conn,
 	isSubscribeAction bool,
 ) {
@@ -41,49 +44,53 @@ func subscriptionHandler(
 
 	var i uint = 0
 
-	for {
-		i++
+	go func() {
+		for {
+			i++
 
-		_, msg, err := clientConnection.ReadMessage()
-		if err != nil {
-			break
-		}
-
-		// If the message ID equals status message ID:
-		if SubscriptionStatusMessageId > 0 && i == SubscriptionStatusMessageId {
-			// Transforming and validating status message from Bitmex.
-			var subscriptionStatus SubscriptionStatus
-
-			if err := parseJsonAndValidate(msg, &subscriptionStatus); err != nil {
-				log.Printf("error validating subscription message: %s", err)
-				continue
+			_, msg, err := clientConnection.ReadMessage()
+			if err != nil {
+				break
 			}
 
-			if err = serverConnection.WriteJSON(SubscriptionStatusMessage{
-				Success: subscriptionStatus.Success,
-			}); err != nil {
-				log.Printf("Error writing messages JSON to channel: %s", err)
-				continue
-			}
-		}
-		
-		if i > SubscriptionStatusMessageId && isSubscribeAction {
-			var instumentResponse InstrumentResponse
-			if err := parseJsonAndValidate(msg, &instumentResponse); err != nil {
-				continue
-			}
+			// If the message ID equals status message ID:
+			if SubscriptionStatusMessageId > 0 && i == SubscriptionStatusMessageId {
+				// Transforming and validating status message from Bitmex.
+				var subscriptionStatus SubscriptionStatus
 
-			for _, element := range instumentResponse.Data {
-				if err = serverConnection.WriteJSON(InstrumentMessage{
-					Timestamp: element.Timestamp,
-					Symbol:    element.Symbol,
+				if err := parseJsonAndValidate(msg, &subscriptionStatus); err != nil {
+					log.Printf("error validating subscription message: %s", err)
+					continue
+				}
+
+				if err = serverConnection.WriteJSON(SubscriptionStatusMessage{
+					Success: subscriptionStatus.Success,
 				}); err != nil {
-					log.Fatalf("Error writing messages JSON to channel: %s", err)
+					log.Printf("Error writing messages JSON to channel: %s", err)
 					continue
 				}
 			}
+
+			if i > SubscriptionStatusMessageId && isSubscribeAction {
+				var instumentResponse InstrumentResponse
+				if err := parseJsonAndValidate(msg, &instumentResponse); err != nil {
+					continue
+				}
+
+				for _, element := range instumentResponse.Data {
+					if err = serverConnection.WriteJSON(InstrumentMessage{
+						Timestamp: element.Timestamp,
+						Symbol:    element.Symbol,
+						// Price: ,
+					}); err != nil {
+						log.Fatalf("Error writing messages JSON to channel: %s", err)
+						continue
+					}
+				}
+			}
 		}
-	}
+	}()
+
 }
 
 func generateApiSignature(apiSecret, method, path, expires, data string) string {

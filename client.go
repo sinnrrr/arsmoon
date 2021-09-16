@@ -33,6 +33,8 @@ type SubscriptionStatus struct {
 	Request     SubscriptionRequestInfo `json:"request" validate:"required,dive,required"`
 }
 
+// The type of message, which sends, when 
+// the user is informed about subscription result.
 type SubscriptionStatusMessage struct {
 	Success bool `json:"success"`
 }
@@ -45,6 +47,7 @@ type InstrumentMessage struct {
 	Price     float32 `json:"price"`
 }
 
+
 type InstrumentInfo struct {
 	Symbol         string  `json:"symbol"`
 	Timestamp      string  `json:"timestamp"`
@@ -52,6 +55,8 @@ type InstrumentInfo struct {
 	MarkPrice      float32 `json:"markPrice"`
 }
 
+/// JSON form of the message, which is used 
+// for transforming into own form (InstrumentMessage struct).
 type InstrumentResponse struct {
 	Table  string           `json:"table" validate:"eq=instrument"`
 	Action string           `json:"action" validate:"eq=update"`
@@ -78,11 +83,11 @@ func NewBitmex() *Bitmex {
 
 // The subscription request constructor.
 func NewSubscriptionRequestInfo(
-	subscribe bool,
+	isSubscribeAction bool,
 ) *SubscriptionRequestInfo {
 	var op string
 
-	if subscribe {
+	if isSubscribeAction {
 		op = Subscribe
 	} else {
 		op = Unsubscribe
@@ -126,7 +131,7 @@ func (b *Bitmex) Connect() error {
 
 // Subscribe to instruments service.
 func (b *Bitmex) Subscribe(serverConnection *websocket.Conn) {
-	go subscriptionHandler(
+	subscriptionHandler(
 		b.Connection,
 		serverConnection,
 		true,
@@ -135,7 +140,7 @@ func (b *Bitmex) Subscribe(serverConnection *websocket.Conn) {
 
 // Unsubscribe from instruments service.
 func (b *Bitmex) Unsubscribe(serverConnection *websocket.Conn) {
-	go subscriptionHandler(
+	subscriptionHandler(
 		b.Connection,
 		serverConnection,
 		false,

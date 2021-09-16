@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
-    "github.com/joho/godotenv"
+	"github.com/joho/godotenv"
 )
 
 // Initializing global bitmex client.
@@ -23,7 +23,6 @@ func main() {
 
 	r := gin.Default()
 
-	// Using inline handler to have access to bitmext client
 	r.GET("/realtime", handler)
 
 	r.Run()
