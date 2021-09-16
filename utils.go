@@ -1,12 +1,15 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 
-	"github.com/gorilla/websocket"
 	"github.com/go-playground/validator/v10"
+	"github.com/gorilla/websocket"
 )
 
 var validate = validator.New()
@@ -42,33 +45,53 @@ func subscriptionHandler(
 
 		_, msg, err := clientConnection.ReadMessage()
 		if err != nil {
-			log.Fatalf("failed reading message from remote server: %s", err)
+			break
 		}
 
 		// If the message ID equals status message ID:
-		if i == subscriptionStatusMessageId {
+		if subscriptionStatusMessageId > 0 && i == subscriptionStatusMessageId {
 			// Transforming and validating status message from Bitmex.
 			var subscriptionStatus SubscriptionStatus
+
+			log.Printf("%+v\n", subscriptionStatus)
+
 			if err := parseJsonAndValidate(msg, &subscriptionStatus); err != nil {
-				log.Fatalf("error validating subscription message: %s", err)
+				log.Printf("error validating subscription message: %s", err)
+				continue
 			}
 
-			// Checking if successfully subscribed to channel.
-			if !subscriptionStatus.Success {
-				log.Fatalf("error while subscribing to Bitmex: %+v", subscriptionStatus)
+			if err = serverConnection.WriteJSON(SubscriptionStatusMessage{
+				Success: subscriptionStatus.Success,
+			}); err != nil {
+				log.Printf("Error writing messages JSON to channel: %s", err)
+				continue
 			}
-		} else if i > subscriptionStatusMessageId && isSubscribeAction {
+		}
+		
+		if i > subscriptionStatusMessageId && isSubscribeAction {
 			var instumentResponse InstrumentResponse
-			if err := parseJsonAndValidate(msg, &instumentResponse); err == nil {
-				for _, element := range instumentResponse.Data {
-					if err = clientConnection.WriteJSON(InstrumentMessage{
-						Timestamp: element.Timestamp,
-						Symbol:    element.Symbol,
-					}); err != nil {
-						log.Fatalf("Error writing messages JSON to channel: %s", err)
-					}
+			if err := parseJsonAndValidate(msg, &instumentResponse); err != nil {
+				continue
+			}
+
+			log.Printf("%+v\n", instumentResponse)
+
+			for _, element := range instumentResponse.Data {
+				if err = serverConnection.WriteJSON(InstrumentMessage{
+					Timestamp: element.Timestamp,
+					Symbol:    element.Symbol,
+				}); err != nil {
+					log.Fatalf("Error writing messages JSON to channel: %s", err)
+					continue
 				}
 			}
 		}
 	}
+}
+
+func generateApiSignature(apiSecret, method, path, expires, data string) string {
+	hash := hmac.New(sha256.New, []byte(apiSecret))
+	hash.Write([]byte(method + path + expires + data))
+
+	return hex.EncodeToString(hash.Sum(nil))
 }

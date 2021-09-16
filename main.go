@@ -1,15 +1,24 @@
 package main
 
-import "github.com/gin-gonic/gin"
+import (
+	"log"
+
+	"github.com/gin-gonic/gin"
+    "github.com/joho/godotenv"
+)
 
 // Initializing global bitmex client.
 var bitmex = NewBitmex()
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
 	// Using single connection for
 	// all users as said in documentation.
 	if err := bitmex.Connect(); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	r := gin.Default()

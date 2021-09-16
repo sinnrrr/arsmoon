@@ -2,7 +2,11 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
+	"os"
+	"strconv"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -24,9 +28,13 @@ type SubscriptionRequestInfo struct {
 // to check if subscription request was successful.
 type SubscriptionStatus struct {
 	Success     bool                    `json:"success" validate:"required"`
-	Subscribe   string                  `json:"subscribe" validate:"eq=instrument"`
-	Unsubscribe string                  `json:"unsubscribe" validate:"eq=instrument"`
+	Subscribe   string                  `json:"subscribe"`
+	Unsubscribe string                  `json:"unsubscribe"`
 	Request     SubscriptionRequestInfo `json:"request" validate:"required,dive,required"`
+}
+
+type SubscriptionStatusMessage struct {
+	Success bool `json:"success"`
 }
 
 // Form of the message, which sends to client from this channel.
@@ -88,7 +96,23 @@ func NewSubscriptionRequestInfo(
 
 // Establish connection to Bitmex websocket server.
 func (b *Bitmex) Connect() error {
-	conn, _, err := websocket.DefaultDialer.Dial(b.URL.String(), nil)
+	var (
+		data    = ""
+		method  = "GET"
+		expires = strconv.FormatInt(time.Now().Add(time.Hour*24).Unix(), 10)
+	)
+
+	conn, _, err := websocket.DefaultDialer.Dial(b.URL.String(), http.Header{
+		"Api-Expires":   []string{expires},
+		"Api-Key":       []string{os.Getenv("BITMEX_API_KEY")},
+		"Api-Signature": []string{generateApiSignature(
+			os.Getenv("BITMEX_API_SECRET"),
+			method,
+			b.URL.Path,
+			expires,
+			data,
+		)},
+	})
 	if err != nil {
 		return fmt.Errorf("error dialing remote server: %s", err)
 	}
@@ -119,4 +143,3 @@ func (b *Bitmex) Unsubscribe(serverConnection *websocket.Conn) {
 		false,
 	)
 }
-
