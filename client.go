@@ -33,7 +33,7 @@ type SubscriptionStatus struct {
 	Request     SubscriptionRequestInfo `json:"request" validate:"required,dive,required"`
 }
 
-// The type of message, which sends, when 
+// The type of message, which sends, when
 // the user is informed about subscription result.
 type SubscriptionStatusMessage struct {
 	Success bool `json:"success"`
@@ -47,15 +47,20 @@ type InstrumentMessage struct {
 	Price     float32 `json:"price"`
 }
 
-
-type InstrumentInfo struct {
-	Symbol         string  `json:"symbol"`
-	Timestamp      string  `json:"timestamp"`
-	ImpactAskPrice float32 `json:"impactAskPrice"`
-	MarkPrice      float32 `json:"markPrice"`
+type Prices struct {
+	MarkPrice          float32 `json:"markPrice"`
+	LastPrice          float32 `json:"lastPrice"`
+	ImpactAskPrice     float32 `json:"impactAskPrice"`
+	LastPriceProtected float32 `json:"lastPriceProtected"`
 }
 
-/// JSON form of the message, which is used 
+type InstrumentInfo struct {
+	Symbol    string `json:"symbol"`
+	Timestamp string `json:"timestamp"`
+	Prices
+}
+
+/// JSON form of the message, which is used
 // for transforming into own form (InstrumentMessage struct).
 type InstrumentResponse struct {
 	Table  string           `json:"table" validate:"eq=instrument"`
@@ -108,16 +113,16 @@ func (b *Bitmex) Connect() error {
 	// )
 
 	conn, _, err := websocket.DefaultDialer.Dial(b.URL.String(), /*http.Header{
-		"Api-Expires":   []string{expires},
-		"Api-Key":       []string{os.Getenv("BITMEX_API_KEY")},
-		"Api-Signature": []string{generateApiSignature(
-			os.Getenv("BITMEX_API_SECRET"),
-			method,
-			b.URL.Path,
-			expires,
-			data,
-		)},
-	}*/ nil)
+			"Api-Expires":   []string{expires},
+			"Api-Key":       []string{os.Getenv("BITMEX_API_KEY")},
+			"Api-Signature": []string{generateApiSignature(
+				os.Getenv("BITMEX_API_SECRET"),
+				method,
+				b.URL.Path,
+				expires,
+				data,
+			)},
+		}*/nil)
 	if err != nil {
 		return fmt.Errorf("error dialing remote server: %s", err)
 	}

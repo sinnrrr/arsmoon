@@ -81,7 +81,11 @@ func subscriptionHandler(
 					if err = serverConnection.WriteJSON(InstrumentMessage{
 						Timestamp: element.Timestamp,
 						Symbol:    element.Symbol,
-						// Price: ,
+						Price: maxOutOfSlice([]float32{
+							element.ImpactAskPrice,
+							element.LastPrice,
+							element.MarkPrice,
+						}),
 					}); err != nil {
 						log.Fatalf("Error writing messages JSON to channel: %s", err)
 						continue
@@ -98,4 +102,15 @@ func generateApiSignature(apiSecret, method, path, expires, data string) string 
 	hash.Write([]byte(method + path + expires + data))
 
 	return hex.EncodeToString(hash.Sum(nil))
+}
+
+func maxOutOfSlice(input []float32) float32 {
+	var max = input[0]
+	for _, value := range input {
+		if value > max {
+			max = value
+		}
+	}
+
+	return max
 }
