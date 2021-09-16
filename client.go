@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"net/url"
-	"os"
-	"strconv"
-	"time"
+	// "os"
+	// "net/http"
+	// "strconv"
+	// "time"
 
 	"github.com/gorilla/websocket"
 )
@@ -96,13 +96,13 @@ func NewSubscriptionRequestInfo(
 
 // Establish connection to Bitmex websocket server.
 func (b *Bitmex) Connect() error {
-	var (
-		data    = ""
-		method  = "GET"
-		expires = strconv.FormatInt(time.Now().Add(time.Hour*24).Unix(), 10)
-	)
+	// var (
+	// 	data    = ""
+	// 	method  = "GET"
+	// 	expires = strconv.FormatInt(time.Now().Add(time.Hour*24).Unix(), 10)
+	// )
 
-	conn, _, err := websocket.DefaultDialer.Dial(b.URL.String(), http.Header{
+	conn, _, err := websocket.DefaultDialer.Dial(b.URL.String(), /*http.Header{
 		"Api-Expires":   []string{expires},
 		"Api-Key":       []string{os.Getenv("BITMEX_API_KEY")},
 		"Api-Signature": []string{generateApiSignature(
@@ -112,13 +112,13 @@ func (b *Bitmex) Connect() error {
 			expires,
 			data,
 		)},
-	})
+	}*/ nil)
 	if err != nil {
 		return fmt.Errorf("error dialing remote server: %s", err)
 	}
 
 	// Passing connection to struct in order other handlers
-	// to have easy idiomatic access to websocket connection.
+	// to have easy access to websocket connection.
 	b.Connection = conn
 
 	return nil
@@ -129,7 +129,6 @@ func (b *Bitmex) Subscribe(serverConnection *websocket.Conn) {
 	go subscriptionHandler(
 		b.Connection,
 		serverConnection,
-		2,
 		true,
 	)
 }
@@ -139,7 +138,6 @@ func (b *Bitmex) Unsubscribe(serverConnection *websocket.Conn) {
 	go subscriptionHandler(
 		b.Connection,
 		serverConnection,
-		1,
 		false,
 	)
 }

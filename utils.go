@@ -29,9 +29,10 @@ func parseJsonAndValidate(data []byte, s interface{}) error {
 func subscriptionHandler(
 	clientConnection *websocket.Conn,
 	serverConnection *websocket.Conn,
-	subscriptionStatusMessageId uint,
 	isSubscribeAction bool,
 ) {
+	const SubscriptionStatusMessageId = 2
+
 	// Sending unsubscribtion request message.
 	err := clientConnection.WriteJSON(NewSubscriptionRequestInfo(isSubscribeAction))
 	if err != nil {
@@ -49,11 +50,9 @@ func subscriptionHandler(
 		}
 
 		// If the message ID equals status message ID:
-		if subscriptionStatusMessageId > 0 && i == subscriptionStatusMessageId {
+		if SubscriptionStatusMessageId > 0 && i == SubscriptionStatusMessageId {
 			// Transforming and validating status message from Bitmex.
 			var subscriptionStatus SubscriptionStatus
-
-			log.Printf("%+v\n", subscriptionStatus)
 
 			if err := parseJsonAndValidate(msg, &subscriptionStatus); err != nil {
 				log.Printf("error validating subscription message: %s", err)
@@ -68,13 +67,11 @@ func subscriptionHandler(
 			}
 		}
 		
-		if i > subscriptionStatusMessageId && isSubscribeAction {
+		if i > SubscriptionStatusMessageId && isSubscribeAction {
 			var instumentResponse InstrumentResponse
 			if err := parseJsonAndValidate(msg, &instumentResponse); err != nil {
 				continue
 			}
-
-			log.Printf("%+v\n", instumentResponse)
 
 			for _, element := range instumentResponse.Data {
 				if err = serverConnection.WriteJSON(InstrumentMessage{
